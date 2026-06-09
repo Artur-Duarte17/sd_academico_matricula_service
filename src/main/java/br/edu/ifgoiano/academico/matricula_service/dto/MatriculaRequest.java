@@ -10,4 +10,5 @@ public record MatriculaRequest(
         @NotNull(message = "O id da turma é obrigatório.")
         Long turmaId
 ) {
+
 }
