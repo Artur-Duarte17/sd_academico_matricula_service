@@ -25,8 +25,7 @@ public class MatriculaController {
         try {
             Matricula matricula = matriculaService.criarMatricula(
                     request.alunoId(),
-                    request.turmaId()
-            );
+                    request.turmaId());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(matricula);
         } catch (IllegalStateException exception) {
@@ -54,8 +53,7 @@ public class MatriculaController {
         try {
             Matricula matricula = matriculaService.cancelarMatricula(
                     request.alunoId(),
-                    request.turmaId()
-            );
+                    request.turmaId());
 
             return ResponseEntity.ok(matricula);
         } catch (IllegalStateException exception) {
