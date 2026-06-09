@@ -36,7 +36,6 @@ public class Matricula {
     @Column(name = "data_cancelamento")
     private LocalDateTime dataCancelamento;
 
-   
     public Matricula() {
     }
 
