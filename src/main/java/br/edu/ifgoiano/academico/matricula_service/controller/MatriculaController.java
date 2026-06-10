@@ -4,6 +4,9 @@ import br.edu.ifgoiano.academico.matricula_service.dto.MatriculaRequestDTO;
 import br.edu.ifgoiano.academico.matricula_service.dto.MatriculaResponseDTO;
 import br.edu.ifgoiano.academico.matricula_service.model.Matricula;
 import br.edu.ifgoiano.academico.matricula_service.service.MatriculaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/matriculas")
+@Tag(name = "Matrículas", description = "Criação, cancelamento e consulta de matrículas")
 public class MatriculaController {
 
     private static final Logger logger = LoggerFactory.getLogger(MatriculaController.class);
@@ -26,6 +30,8 @@ public class MatriculaController {
     }
 
     @PostMapping
+    @Operation(summary = "Criar matrícula",
+            description = "Matricula um aluno ATIVO em uma turma com vaga. Publica o evento matricula.criada.")
     public ResponseEntity<?> criarMatricula(@RequestBody @Valid MatriculaRequestDTO request) {
         logger.info("[MATRICULA-SERVICE] POST /matriculas - Aluno: {}, Turma: {}",
                 request.getAlunoId(), request.getTurmaId());
@@ -42,25 +48,33 @@ public class MatriculaController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar matrículas", description = "Retorna todas as matrículas.")
     public ResponseEntity<List<MatriculaResponseDTO>> listarTodas() {
         logger.info("[MATRICULA-SERVICE] GET /matriculas");
         return ResponseEntity.ok(paraResponse(matriculaService.listarTodas()));
     }
 
     @GetMapping("/aluno/{alunoId}")
-    public ResponseEntity<List<MatriculaResponseDTO>> listarPorAluno(@PathVariable Long alunoId) {
+    @Operation(summary = "Listar matrículas por aluno", description = "Retorna as matrículas de um aluno.")
+    public ResponseEntity<List<MatriculaResponseDTO>> listarPorAluno(
+            @Parameter(description = "ID do aluno", example = "1") @PathVariable Long alunoId) {
         logger.info("[MATRICULA-SERVICE] GET /matriculas/aluno/{}", alunoId);
         return ResponseEntity.ok(paraResponse(matriculaService.listarPorAluno(alunoId)));
     }
 
     @GetMapping("/turma/{turmaId}")
-    public ResponseEntity<List<MatriculaResponseDTO>> listarPorTurma(@PathVariable Long turmaId) {
+    @Operation(summary = "Listar matrículas por turma", description = "Retorna as matrículas de uma turma.")
+    public ResponseEntity<List<MatriculaResponseDTO>> listarPorTurma(
+            @Parameter(description = "ID da turma", example = "1") @PathVariable Long turmaId) {
         logger.info("[MATRICULA-SERVICE] GET /matriculas/turma/{}", turmaId);
         return ResponseEntity.ok(paraResponse(matriculaService.listarPorTurma(turmaId)));
     }
 
     @PutMapping("/{id}/cancelar")
-    public ResponseEntity<?> cancelarMatricula(@PathVariable Long id) {
+    @Operation(summary = "Cancelar matrícula",
+            description = "Cancela a matrícula pelo seu ID, libera a vaga e publica o evento matricula.cancelada.")
+    public ResponseEntity<?> cancelarMatricula(
+            @Parameter(description = "ID da matrícula", example = "1") @PathVariable Long id) {
 
         logger.info(
                 "[MATRICULA-SERVICE] PUT /matriculas/{}/cancelar",
