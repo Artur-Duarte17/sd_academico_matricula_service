@@ -93,7 +93,8 @@ public class MatriculaService {
             throw exception;
         }
 
-        // Publica o evento de domínio (best-effort: falha de mensageria não desfaz a matrícula)
+        // Publica o evento de domínio (best-effort: falha de mensageria não desfaz a
+        // matrícula)
         publicarEvento(
                 RabbitMQConfig.ROUTING_KEY_MATRICULA_CRIADA,
                 alunoId,
@@ -116,15 +117,23 @@ public class MatriculaService {
         return matriculaRepository.findByTurmaId(turmaId);
     }
 
-    public Matricula cancelarMatricula(Long alunoId, Long turmaId) {
+    public Matricula cancelarMatricula(Long matriculaId) {
 
+        // Procura a matrícula pelo ID recebido na URL
         Matricula matricula = matriculaRepository
-                .findByAlunoIdAndTurmaIdAndStatus(
-                        alunoId,
-                        turmaId,
-                        StatusMatricula.ATIVA)
+                .findById(matriculaId)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Não existe matrícula ativa para este aluno nesta turma."));
+                        "Matrícula não encontrada."));
+
+        // Somente uma matrícula ATIVA pode ser cancelada
+        if (!matricula.estaAtiva()) {
+            throw new IllegalStateException(
+                    "A matrícula informada não está ativa.");
+        }
+
+        // Recupera os dados que já pertencem à matrícula
+        Long alunoId = matricula.getAlunoId();
+        Long turmaId = matricula.getTurmaId();
 
         // Primeiro pede ao Turma Service para liberar a vaga
         LiberaVagaResponse liberacao = liberarVagaNaTurma(turmaId);
@@ -136,16 +145,24 @@ public class MatriculaService {
                             + liberacao.getMensagem());
         }
 
-        // A vaga já foi liberada (commit no Turma Service). Se o save falhar, precisamos
-        // COMPENSAR reservando a vaga novamente para não criar inconsistência.
+        // Se o salvamento falhar depois da liberação,
+        // tenta reservar novamente a vaga
         Matricula salva;
+
         try {
             matricula.cancelar();
             salva = matriculaRepository.save(matricula);
+
         } catch (RuntimeException exception) {
-            log.error("Falha ao salvar o cancelamento após liberar vaga na turma {}. "
-                    + "Compensando: reservando a vaga novamente.", turmaId, exception);
+
+            log.error(
+                    "Falha ao salvar o cancelamento após liberar vaga na turma {}. "
+                            + "Compensando: reservando a vaga novamente.",
+                    turmaId,
+                    exception);
+
             compensarReservandoVaga(turmaId);
+
             throw exception;
         }
 
@@ -154,7 +171,11 @@ public class MatriculaService {
                 alunoId,
                 turmaId,
                 "MATRICULA_CANCELADA",
-                "Matrícula cancelada para o aluno " + alunoId + " na turma " + turmaId + ".");
+                "Matrícula cancelada para o aluno "
+                        + alunoId
+                        + " na turma "
+                        + turmaId
+                        + ".");
 
         return salva;
     }
@@ -223,7 +244,8 @@ public class MatriculaService {
 
     /**
      * Compensação (saga): libera uma vaga previamente reservada quando o restante
-     * da operação de criação falhou. Best-effort — apenas registra em log se falhar.
+     * da operação de criação falhou. Best-effort — apenas registra em log se
+     * falhar.
      */
     private void compensarLiberandoVaga(Long turmaId) {
         try {
@@ -251,7 +273,8 @@ public class MatriculaService {
 
     /**
      * Publica um evento de domínio no exchange "academico.events". A mensagem é um
-     * JSON (texto) com os campos esperados pelos serviços de Notificação e Histórico:
+     * JSON (texto) com os campos esperados pelos serviços de Notificação e
+     * Histórico:
      * alunoId, turmaId, tipo e descricao.
      *
      * Best-effort: uma indisponibilidade do RabbitMQ não deve desfazer a matrícula
