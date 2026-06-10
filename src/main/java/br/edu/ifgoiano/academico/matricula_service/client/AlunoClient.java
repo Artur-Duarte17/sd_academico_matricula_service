@@ -25,4 +25,17 @@ public interface AlunoClient{
      */
     @GetMapping("/alunos/{id}/existe")
     boolean alunoExiste(@PathVariable("id") Long alunoId);
+
+    /**
+     * Consulta o aluno-service para verificar se um aluno está ATIVO
+     * (apenas alunos ATIVOS podem se matricular).
+     *
+     * A chamada corresponde a:
+     * GET /alunos/{id}/ativo
+     *
+     * @param alunoId identificador do aluno
+     * @return true se o aluno existir e estiver ATIVO; false caso contrário
+     */
+    @GetMapping("/alunos/{id}/ativo")
+    boolean alunoAtivo(@PathVariable("id") Long alunoId);
 }
