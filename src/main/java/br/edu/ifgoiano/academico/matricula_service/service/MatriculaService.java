@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import br.edu.ifgoiano.academico.matricula_service.client.AlunoClient;
 
+import br.edu.ifgoiano.academico.matricula_service.service.exception.TurmaServiceIndisponivelException;
+import io.grpc.StatusRuntimeException;
 import br.edu.ifgoiano.academico.matricula_service.service.exception.AlunoServiceIndisponivelException;
 import feign.FeignException;
 
@@ -150,21 +152,20 @@ public class MatriculaService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Não existe matrícula ativa para este aluno nesta turma."));
 
-        matricula.cancelar();
-        Matricula matriculaCancelada = matriculaRepository.save(matricula);
+        // Primeiro pede ao Turma Service para liberar a vaga
+        LiberaVagaResponse liberacao = liberarVagaNaTurma(turmaId);
 
-        // Libera a vaga na turma via gRPC após cancelar a matrícula
-        LiberaVagaResponse liberacao = turmaGrpcStub.liberarVaga(
-                LiberaVagaRequest.newBuilder()
-                        .setTurmaId(turmaId)
-                        .build());
-
+        // Interrompe o cancelamento se a vaga não for liberada
         if (!liberacao.getSucesso()) {
-            // Não reverte o cancelamento; apenas registra a inconsistência
-            log.warn("Falha ao liberar vaga na turma {}: {}", turmaId, liberacao.getMensagem());
+            throw new IllegalStateException(
+                    "Não foi possível liberar vaga na turma: "
+                            + liberacao.getMensagem());
         }
 
-        return matriculaCancelada;
+        // Só cancela a matrícula depois que a vaga foi liberada
+        matricula.cancelar();
+
+        return matriculaRepository.save(matricula);
     }
 
     private boolean consultarExistenciaAluno(Long alunoId) {
@@ -187,5 +188,53 @@ public class MatriculaService {
                     exception);
         }
 
+    }
+
+    private ReservaVagaResponse reservarVagaNaTurma(Long turmaId) {
+
+        try {
+            // Tenta reservar uma vaga no Turma Service
+            return turmaGrpcStub.reservarVaga(
+                    ReservaVagaRequest.newBuilder()
+                            .setTurmaId(turmaId)
+                            .build());
+
+        } catch (StatusRuntimeException exception) {
+
+            // Registra o erro ocorrido
+            log.error(
+                    "Falha ao reservar vaga na turma {}: {}",
+                    turmaId,
+                    exception.getStatus());
+
+            // Informa que o Turma Service não respondeu
+            throw new TurmaServiceIndisponivelException(
+                    "Não foi possível acessar o Turma Service no momento.",
+                    exception);
+        }
+    }
+
+    private LiberaVagaResponse liberarVagaNaTurma(Long turmaId) {
+
+        try {
+            // Tenta liberar uma vaga no Turma Service
+            return turmaGrpcStub.liberarVaga(
+                    LiberaVagaRequest.newBuilder()
+                            .setTurmaId(turmaId)
+                            .build());
+
+        } catch (StatusRuntimeException exception) {
+
+            // Registra o erro ocorrido
+            log.error(
+                    "Falha ao liberar vaga na turma {}: {}",
+                    turmaId,
+                    exception.getStatus());
+
+            // Informa que o Turma Service não respondeu
+            throw new TurmaServiceIndisponivelException(
+                    "Não foi possível acessar o Turma Service no momento.",
+                    exception);
+        }
     }
 }
