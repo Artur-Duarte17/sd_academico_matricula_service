@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty name="SERVICE_NAME" source="spring.application.name" defaultValue="academico-service"/>
+    <springProperty name="RABBITMQ_HOST" source="spring.rabbitmq.host" defaultValue="localhost"/>
+    <springProperty name="RABBITMQ_PORT" source="spring.rabbitmq.port" defaultValue="5672"/>
+    <springProperty name="RABBITMQ_USER" source="spring.rabbitmq.username" defaultValue="guest"/>
+    <springProperty name="RABBITMQ_PASS" source="spring.rabbitmq.password" defaultValue="guest"/>
+
+    <appender name="RABBITMQ" class="org.springframework.amqp.rabbit.logback.AmqpAppender">
+        <layout>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [${SERVICE_NAME}] %logger{36} - %msg%n</pattern>
+        </layout>
+        <host>${RABBITMQ_HOST}</host>
+        <port>${RABBITMQ_PORT}</port>
+        <username>${RABBITMQ_USER}</username>
+        <password>${RABBITMQ_PASS}</password>
+        <virtualHost>/</virtualHost>
+        <exchangeName>logs.academico</exchangeName>
+        <exchangeType>topic</exchangeType>
+        <routingKey>logs.${SERVICE_NAME}</routingKey>
+        <declareExchange>true</declareExchange>
+        <durable>true</durable>
+        <autoDelete>false</autoDelete>
+        <applicationId>${SERVICE_NAME}</applicationId>
+        <generateId>true</generateId>
+        <charset>UTF-8</charset>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="RABBITMQ"/>
+    </root>
+</configuration>
