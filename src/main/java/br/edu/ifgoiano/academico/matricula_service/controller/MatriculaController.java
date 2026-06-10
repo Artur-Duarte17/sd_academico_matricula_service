@@ -70,21 +70,31 @@ public class MatriculaController {
         return ResponseEntity.ok(paraResponse(matriculaService.listarPorTurma(turmaId)));
     }
 
-    @PutMapping("/cancelar")
+    @PutMapping("/{id}/cancelar")
     @Operation(summary = "Cancelar matrícula",
-            description = "Cancela a matrícula ativa do aluno na turma, libera a vaga e publica o evento matricula.cancelada.")
-    public ResponseEntity<?> cancelarMatricula(@RequestBody @Valid MatriculaRequestDTO request) {
-        logger.info("[MATRICULA-SERVICE] PUT /matriculas/cancelar - Aluno: {}, Turma: {}",
-                request.getAlunoId(), request.getTurmaId());
+            description = "Cancela a matrícula pelo seu ID, libera a vaga e publica o evento matricula.cancelada.")
+    public ResponseEntity<?> cancelarMatricula(
+            @Parameter(description = "ID da matrícula", example = "1") @PathVariable Long id) {
+
+        logger.info(
+                "[MATRICULA-SERVICE] PUT /matriculas/{}/cancelar",
+                id);
+
         try {
-            Matricula matricula = matriculaService.cancelarMatricula(
-                    request.getAlunoId(),
-                    request.getTurmaId());
+            Matricula matricula = matriculaService.cancelarMatricula(id);
 
             return ResponseEntity.ok(paraResponse(matricula));
+
         } catch (IllegalStateException exception) {
-            logger.warn("[MATRICULA-SERVICE] Falha ao cancelar matrícula: {}", exception.getMessage());
-            return ResponseEntity.badRequest().body(exception.getMessage());
+
+            logger.warn(
+                    "[MATRICULA-SERVICE] Falha ao cancelar matrícula {}: {}",
+                    id,
+                    exception.getMessage());
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(exception.getMessage());
         }
     }
 
